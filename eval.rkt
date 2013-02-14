@@ -5,6 +5,7 @@
 (require (prefix-in schell: "environment.rkt"))
 (require (prefix-in schell: "command.rkt"))
 (require (prefix-in schell: "builtins.rkt"))
+(require (prefix-in schell: "functions.rkt"))
 (provide eval)
 
 (define-struct exn:command-not-found (command))
@@ -36,6 +37,14 @@
     (let-values (((carargs nenv) (eval (car args) env))) 
       (cons carargs (eval-args (cdr args) env)))))
 
+; function-apply : function? list -> any
+; arguments are ignored for now
+(define (function-apply func args)
+  (let-values (((result env) 
+                (eval 
+                  (schell:function-expr func) (schell:function-env func))))
+    result))
+
 ; run-command : datum env -> string env
 ; executes an external or internal command and return its exit code
 ; first search through builtin commands, then external programs
@@ -43,8 +52,10 @@
 ; modified environnement
 (define (run-command cmd env)
   (let-values (((command nenv) (eval (schell:command cmd) env)))
-    (let ((args (eval-args (schell:arguments cmd) env))
-          (builtin (schell:envsearch schell:builtin-commands command)))
+    (let ((args (eval-args (schell:arguments cmd) env)))
+      (if (schell:function? command)
+        (values (function-apply command args) env)
+        (let ((builtin (schell:envsearch schell:builtin-commands command)))
       (if (false? builtin)
         (let-values (((proc out in err) 
                       (let ((stdin (current-input-port))
@@ -59,7 +70,7 @@
           (values (number->string (subprocess-status proc)) env))
         (if (null? args)
           (builtin env)
-          (builtin env args))))))
+          (builtin env args))))))))
 
 ; eval datum env -> string env
 ; evaluates a Schell expression in the given environment
@@ -70,6 +81,12 @@
   (cond
     ((schell:quote? expr)
      (values (cadr expr) env))
+
+    ; ignore lambda arguments for the moment
+    ((schell:lambda? expr)
+     (values (schell:make-function env (schell:lambda-expr expr)) env))
+
+    ((schell:function? expr) expr)
 
     ((schell:command? expr)
      (with-handlers ((exn:command-not-found?
