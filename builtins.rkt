@@ -63,9 +63,22 @@
        (export env (list (car args) (schell:variable-value (car args) env null)))
        (values (putenv (car args) (cadr args)) env)))))
 
+(define echo
+  (case-lambda
+    ((env args)
+     (if (null? args)
+       (begin
+         (printf "\n")
+         (values 0 env))
+       (begin
+         (printf "~a " (car args))
+         (echo env (cdr args)))))
+     ((env) (echo env null))))
+
 (define builtin-commands
   (list
     (mcons "getwd" (lambda (args) (printf "~a\n" (current-directory))))
     (mcons "cd" cd)
     (mcons "export" export)
+    (mcons "echo" echo)
     (mcons "set!" schell-set)))

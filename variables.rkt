@@ -1,6 +1,6 @@
 #lang racket
 
-(provide empty text? value? variable? variable-name)
+(provide empty text? value? variable? variable-name quote?)
 
 ; An empty string
 (define empty "")
@@ -29,3 +29,9 @@
   (if (value? var)
       (substring (symbol->string var) 1)
       empty))
+
+; quote? : datum -> boolean
+; returns true if the expression is a quoted expression, and should
+; not be evaluated
+(define (quote? expr)
+  (and (list? expr) (eq? 'quote (car expr))))

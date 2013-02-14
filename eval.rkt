@@ -68,6 +68,9 @@
 (define (eval expr env)
   (printf "eval ~a in ~a\n" expr env)
   (cond
+    ((schell:quote? expr)
+     (values (cadr expr) env))
+
     ((schell:command? expr)
      (with-handlers ((exn:command-not-found?
                        (lambda (e)
@@ -81,6 +84,9 @@
                (schell:variable-name expr)
                env schell:builtin-variables)
              env))
+
+    ((number? expr)
+     (values (number->string expr) env))
 
     ((schell:text? expr)
      (values (symbol->string expr) env))
