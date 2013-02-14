@@ -37,12 +37,26 @@
     (let-values (((carargs nenv) (eval (car args) env))) 
       (cons carargs (eval-args (cdr args) env)))))
 
+; bind-env : list? list? -> list?
+; bind the values contained in the second list to the names contained in
+; the first list and return them in an environment (a list of pairs of string
+; and value. Return #f if the size of lists doesn't match
+(define (bind-env names vars)
+  (cond
+    ((null? names) 
+     (if (null? vars) null #f))
+    ((null? vars) 
+     (if (null? names) null #f))
+    (else (cons (mcons (symbol->string (car names)) (car vars)) (bind-env (cdr names) (cdr vars))))))
+
 ; function-apply : function? list -> any
 ; arguments are ignored for now
 (define (function-apply func args)
-  (let-values (((result env) 
+  (let-values (((result env)
                 (eval 
-                  (schell:function-expr func) (schell:function-env func))))
+                  (schell:function-expr func) (cons 
+                                                (bind-env (schell:function-args func) args)
+                                                (schell:function-env func)))))
     result))
 
 ; run-command : datum env -> string env
@@ -84,7 +98,10 @@
 
     ; ignore lambda arguments for the moment
     ((schell:lambda? expr)
-     (values (schell:make-function env (schell:lambda-expr expr)) env))
+     (values (schell:make-function 
+               env
+               (schell:lambda-args expr)
+               (schell:lambda-expr expr)) env))
 
     ((schell:function? expr) expr)
 
