@@ -8,11 +8,11 @@
 (define (command? expr)
   (and (list? expr) (not (null? expr))))
 
-; command : datum -> string
+; command : datum -> datum
 ; returns the command part of a command call
 ; e.g. for (ls /home), returns "ls"
 (define (command expr)
-  (symbol->string (car expr)))
+  (car expr))
 
 ; arguments : datum -> list
 ; returns the arguments of a command call
