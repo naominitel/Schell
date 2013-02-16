@@ -1,7 +1,7 @@
 #lang racket
 
 (require (prefix-in schell: "variables.rkt"))
-(provide envsearch variable-value)
+(provide envsearch variable-value make-envstack)
 
 ; an environnement is a list of pairs<string, value>
 
@@ -19,18 +19,21 @@
 ; and finally, in the given local environnement, which
 ; is a list of environnements. If still not found, 
 ; returns an empty value.
-(define (variable-value name env builtins)
+(define (variable-value name envstack builtins)
   (let ((builtin (envsearch builtins name)))
-    (if (false? builtin) 
+    (if (false? builtin)
       (let ((environ (getenv name)))
         (if (false? environ)
           (letrec ((local-envsearch
                      (lambda (env)
                      (if (null? env) schell:empty
-                       (let ((localenv (envsearch (car env) name)))
+                       (let ((localenv (envsearch (mcar env) name)))
                          (if (false? localenv)
-                           (local-envsearch (cdr env))
+                           (local-envsearch (mcdr env))
                            localenv))))))
-            (local-envsearch env))
+            (local-envsearch envstack))
           environ))
       builtin)))
+
+(define (make-envstack)
+  (mcons (list) null))

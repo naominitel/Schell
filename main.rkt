@@ -1,16 +1,16 @@
 #lang racket
 
 (require (prefix-in schell: "eval.rkt"))
+(require (prefix-in schell: "environment.rkt"))
 
 ; repl -> void
 (letrec 
   ((repl
-     (let ((env null))
+     (let ((env (schell:make-envstack)))
        (lambda ()
          (printf "> ")
-         (let-values (((ret nenv) (schell:eval (syntax->datum (read-syntax)) env)))
-           (set! env nenv)
+         (let ((ret (schell:eval (syntax->datum (read-syntax)) env)))
            (printf "expr returned : ~a\n" ret)
-           (printf "env at the end : ~a\n" nenv))
+           (printf "env at the end : ~a\n" env))
          (repl)))))
   (repl))

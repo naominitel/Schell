@@ -17,59 +17,61 @@
 (define (envset! env var value)
   (printf "LOCALSET: setting (~a . ~a) in ~a\n" var value env)
   (let ((search (filter (lambda (e) (string=? (mcar e) var)) env)))
-    (printf "LOCALSET: searching for ~a returned ~a" var search)
+    (printf "LOCALSET: searching for ~a returned ~a\n" var search)
     (if (null? search) #f
       (set-mcdr! (car search) value))))
 
-; variable-set! : string any list -> list
-; sets the variable var to the given value. First check if exists
-; as an envvar and sets it, otherwise sets it in the local environnement,
-; creating it if it doesn't exists.
-; returns the environment (modified or not)
-(define (variable-set var value localenv)
+; variable-set : string? any mpair? -> void?
+; sets the variable to the given value. First checks if it exists as an
+; envvar and sets it, otherwise sets it in the local environment, creating it
+; if it doesn't exists at the top of the environment stack.
+; setting the variable is done in place and this function returns nothing
+; this assumes the env-stack is never null and contains at least an element
+; (that can be null), but ensures (eval) is now tail-recursive.
+(define (variable-set var value env-stack)
   (if (false? (getenv var))
-    (letrec ((local-envset
-               (lambda (env)
-                 (printf "LOCALENVSET: setting (~a . ~a) in ~a\n" var value env)
-                 (if (null? env)
-                   (if (null? localenv)
-                     (cons (list (mcons var value)) localenv)
-                     (cons (cons (mcons var value) (car localenv)) (cdr localenv)))
-                   (let ((localset (envset! (car env) var value)))
-                     (if (false? localset)
-                       (local-envset (cdr env))
-                       localenv))))))
-      (local-envset localenv))
-    (begin 
-      (putenv var value)
-      localenv)))
+    (letrec ((local-envset!
+              (lambda (env)
+                (if (null? env)
+                  (set-mcar!
+                    env-stack
+                    (cons (mcons var value) (mcar env-stack)))
+                  (let ((test (envset! (mcar env) var value)))
+                    (if (false? test)
+                      (local-envset! (mcdr env))
+                      (void)))))))
+      (local-envset! env-stack))
+    (putenv var value)))
 
-; set : var value env -> void env
+; set : string? any mpair? -> void?
 (define schell-set
-  (case-lambda
-    ((env args) (values (void) (variable-set (car args) (cadr args) env))))) 
+  (lambda (env args)
+    (variable-set (car args) (cadr args) env)))
 
-; cd : env string -> void env
+; cd : mpair? string? -> void?
 ; change directory to the given path
 (define cd
   (case-lambda
     ((env) (cd (getenv "HOME")))
-    ((env args) (values (current-directory (car args)) env))))
+    ((env args) (current-directory (car args)))))
 
+; export : mpair? string? any -> void?
+; puts the given (variable, value) in the UNIX environnement variables. If
+; no value is providen, use actual value of the variable in the local env stack
 (define export
   (case-lambda
     ((env args)
      (if (null? (cdr args))
        (export env (list (car args) (schell:variable-value (car args) env null)))
-       (values (putenv (car args) (cadr args)) env)))))
+       (putenv (car args) (cadr args))))))
 
+; echo : env? list? -> void?
+; prints all elements of the given list on the standard output
 (define echo
   (case-lambda
     ((env args)
      (if (null? args)
-       (begin
-         (printf "\n")
-         (values 0 env))
+       (begin (printf "\n") 0)
        (begin
          (printf "~a " (car args))
          (echo env (cdr args)))))
