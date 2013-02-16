@@ -70,15 +70,16 @@
         (function-apply command args)
         (let ((builtin (schell:envsearch schell:builtin-commands command)))
           (if (false? builtin)
-            (let-values (((proc out in err)
-                          (let ((stdin (current-input-port))
-                                (stdout (current-output-port))
-                                (stderr (current-error-port))
-                                (command (whereis command)))
-                            (parameterize ((current-directory (current-directory)))
-                              (if (null? args)
-                                (subprocess stdout stdin stderr command)
-                                (subprocess stdout stdin stderr command #|args|#))))))
+            (let-values 
+              (((proc out in err)
+                (let ((stdin (current-input-port))
+                      (stdout (current-output-port))
+                      (stderr (current-error-port))
+                      (command (whereis command)))
+                  (parameterize ((current-directory (current-directory)))
+                    (if (null? args)
+                      (subprocess stdout stdin stderr command)
+                      (subprocess stdout stdin stderr command #|args|#))))))
               (subprocess-wait proc)
               (number->string (subprocess-status proc)))
             (if (null? args)
@@ -94,19 +95,14 @@
   (cond
     ((schell:quote? expr) (cadr expr))
 
-    ((schell:let? expr)
-     (eval (cons (schell:make-function 
-                   env 
-                   (schell:let-vars expr) 
-                   (schell:let-expr expr))
-                 (schell:let-vals expr)) env))
+    ((schell:let? expr) (eval (schell:let-expand expr) env))
+
+    ((schell:let*? expr) (eval (schell:let*-expand expr) env))
 
     ((schell:lambda? expr) (schell:make-function
                              env
                              (schell:lambda-args expr)
                              (schell:lambda-expr expr)))
-
-    ((schell:let*? expr) (eval (schell:let*-expand expr) env))
 
     ((schell:function? expr) expr)
 
