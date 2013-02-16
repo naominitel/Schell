@@ -7,6 +7,7 @@
 (require (prefix-in schell: "builtins.rkt"))
 (require (prefix-in schell: "functions.rkt"))
 (require (prefix-in schell: "let.rkt"))
+(require (prefix-in schell: "begin.rkt"))
 (provide $eval)
 
 (define-struct exn:command-not-found (command))
@@ -65,6 +66,7 @@
 ; some builtin functions can modify the environnement so return the
 ; modified environnement
 (define (run-command cmd env)
+  (printf "Running ~a\n" cmd)
   (let ((command ($eval (schell:command cmd) env))
         (args (eval-args (schell:arguments cmd) env))
         (namespace (namespace-anchor->namespace anchor)))
@@ -84,7 +86,11 @@
                     namespace)))))
               (subprocess-wait proc)
               (number->string (subprocess-status proc)))
-          (eval (append (list builtin env) args) namespace))))))
+          (begin
+          (eval (append
+                  (list builtin env)
+                  (map (lambda (arg) (list 'quote arg)) args))
+                namespace)))))))
 
 ; eval : any list? -> any
 ; evaluates a Schell expression in the given environment
@@ -96,8 +102,17 @@
     ((schell:quote? expr) (cadr expr))
 
     ((schell:let? expr) ($eval (schell:let-expand expr) env))
-
     ((schell:let*? expr) ($eval (schell:let*-expand expr) env))
+
+    ((schell:begin? expr)
+     (let ((exprs (cdr expr)))
+       (cond
+         ((null? exprs) (void))
+         ((null? (cdr exprs)) ($eval (car exprs) env))
+         (else
+           (begin
+             ($eval (car exprs) env)
+             ($eval (cons 'begin (cdr exprs)) env))))))
 
     ((schell:lambda? expr) (schell:make-function
                              env
