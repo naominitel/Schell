@@ -9,7 +9,7 @@
      (let ((env (schell:make-envstack)))
        (lambda ()
          (printf "> ")
-         (let ((ret (schell:eval (syntax->datum (read-syntax)) env)))
+         (let ((ret (schell:$eval (syntax->datum (read-syntax)) env)))
            (printf "expr returned : ~a\n" ret)
            (printf "env at the end : ~a\n" env))
          (repl)))))

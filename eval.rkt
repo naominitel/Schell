@@ -7,9 +7,10 @@
 (require (prefix-in schell: "builtins.rkt"))
 (require (prefix-in schell: "functions.rkt"))
 (require (prefix-in schell: "let.rkt"))
-(provide eval)
+(provide $eval)
 
 (define-struct exn:command-not-found (command))
+(define-namespace-anchor anchor)
 
 ; whereis : string? -> string?
 ; return the full file path of the given command. If cmd is not a 
@@ -33,7 +34,7 @@
 ; evaluates a list of arguments and put them in a list
 (define (eval-args args env)
   (if (null? args) null
-    (let ((carargs (eval (car args) env)))
+    (let ((carargs ($eval (car args) env)))
       (cons carargs (eval-args (cdr args) env)))))
 
 ; bind-env : list? list? -> list?
@@ -53,7 +54,7 @@
 ; function-apply : function? list -> any
 ; arguments are ignored for now
 (define (function-apply func args)
-  (let ((result (eval (schell:function-expr func)
+  (let ((result ($eval (schell:function-expr func)
                       (mcons (bind-env (schell:function-args func) args)
                              (schell:function-env func)))))
     result))
@@ -64,40 +65,39 @@
 ; some builtin functions can modify the environnement so return the
 ; modified environnement
 (define (run-command cmd env)
-  (let ((command (eval (schell:command cmd) env)))
-    (let ((args (eval-args (schell:arguments cmd) env)))
-      (if (schell:function? command)
-        (function-apply command args)
-        (let ((builtin (schell:envsearch schell:builtin-commands command)))
-          (if (false? builtin)
-            (let-values 
-              (((proc out in err)
-                (let ((stdin (current-input-port))
-                      (stdout (current-output-port))
-                      (stderr (current-error-port))
-                      (command (whereis command)))
-                  (parameterize ((current-directory (current-directory)))
-                    (if (null? args)
-                      (subprocess stdout stdin stderr command)
-                      (subprocess stdout stdin stderr command #|args|#))))))
+  (let ((command ($eval (schell:command cmd) env))
+        (args (eval-args (schell:arguments cmd) env))
+        (namespace (namespace-anchor->namespace anchor)))
+    (if (schell:function? command)
+      (function-apply command args)
+      (let ((builtin (schell:envsearch schell:builtin-commands command)))
+        (if (false? builtin)
+          (let-values
+            (((proc out in err)
+              (let ((stdin (current-input-port))
+                    (stdout (current-output-port))
+                    (stderr (current-error-port))
+                    (command (whereis command)))
+                (parameterize ((current-directory (current-directory)))
+                  (eval
+                    (append (list subprocess stdout stdin stderr command) args)
+                    namespace)))))
               (subprocess-wait proc)
               (number->string (subprocess-status proc)))
-            (if (null? args)
-              (builtin env)
-              (builtin env args))))))))
+          (eval (append (list builtin env) args) namespace))))))
 
 ; eval : any list? -> any
 ; evaluates a Schell expression in the given environment
 ; returns a string containing the result of the expression and the modified
 ; environment
-(define (eval expr env)
+(define ($eval expr env)
   (printf "eval ~a in ~a\n" expr env)
   (cond
     ((schell:quote? expr) (cadr expr))
 
-    ((schell:let? expr) (eval (schell:let-expand expr) env))
+    ((schell:let? expr) ($eval (schell:let-expand expr) env))
 
-    ((schell:let*? expr) (eval (schell:let*-expand expr) env))
+    ((schell:let*? expr) ($eval (schell:let*-expand expr) env))
 
     ((schell:lambda? expr) (schell:make-function
                              env

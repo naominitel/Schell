@@ -43,39 +43,42 @@
       (local-envset! env-stack))
     (putenv var value)))
 
+(define-struct exn:bad-parameters (command expected given))
+
 ; set : string? any mpair? -> void?
 (define schell-set
-  (lambda (env args)
-    (variable-set (car args) (cadr args) env)))
+  (case-lambda
+    ((env var value) (variable-set var value env))
+    (args (raise (make-exn:bad-parameters "set!" 2 (- (length args) 1))))))
 
 ; cd : mpair? string? -> void?
 ; change directory to the given path
 (define cd
   (case-lambda
-    ((env) (cd (getenv "HOME")))
-    ((env args) (current-directory (car args)))))
+    ((env) (cd env (getenv "HOME")))
+    ((env path) (current-directory path))
+    (args (raise (make-exn:bad-parameters "cd" 1 (- (length args) 1))))))
 
 ; export : mpair? string? any -> void?
 ; puts the given (variable, value) in the UNIX environnement variables. If
 ; no value is providen, use actual value of the variable in the local env stack
 (define export
   (case-lambda
-    ((env args)
-     (if (null? (cdr args))
-       (export env (list (car args) (schell:variable-value (car args) env null)))
-       (putenv (car args) (cadr args))))))
+    ((env var value) (putenv var value))
+    ((env var) (export env var (schell:variable-value var env null)))
+    (args (raise (make-exn:bad-parameters "export" 1 (- (length args) 1))))))
 
 ; echo : env? list? -> void?
 ; prints all elements of the given list on the standard output
 (define echo
   (case-lambda
-    ((env args)
-     (if (null? args)
-       (begin (printf "\n") 0)
-       (begin
-         (printf "~a " (car args))
-         (echo env (cdr args)))))
-     ((env) (echo env null))))
+    (() (raise (make-exn:bad-parameters "echo" 1 0)))
+    ((env) (begin (printf "\n") 0))
+    (args
+      (let (args (cdr args))
+        (if (null? args) (echo env)
+          (begin (printf "~a " (car args))
+                 (echo env (cdr args))))))))
 
 (define builtin-commands
   (list
