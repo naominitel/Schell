@@ -189,7 +189,7 @@ Second, the do form :
 
 The first repeats `action` tills `expr` returns `$#f`. The second first check that `expr` is `$#t` then executes `action`. The whole expression returns the value of the last executed `action`.
 
-#### Let (Not implemented, but soon... did you know that was just expanded into a lambda ?)
+#### Let
 
 Allows to add variables to the environnement when running a child command without modifying the current environnement variables : 
 
@@ -199,6 +199,8 @@ Allows to add variables to the environnement when running a child command withou
 ```
 
 Possibility : rename this form (for example `with`) not to confuse it with the standard Scheme let that does not affect envvars.
+For the moment, variables declared inside let forms are not passed to subprocesses.
+Schell also provides the `let*` form.
 
 #### Builtins
 
