@@ -6,6 +6,7 @@
 (require (prefix-in schell: "command.rkt"))
 (require (prefix-in schell: "builtins.rkt"))
 (require (prefix-in schell: "functions.rkt"))
+(require (prefix-in schell: "let.rkt"))
 (provide eval)
 
 (define-struct exn:command-not-found (command))
@@ -93,10 +94,19 @@
   (cond
     ((schell:quote? expr) (cadr expr))
 
+    ((schell:let? expr)
+     (eval (cons (schell:make-function 
+                   env 
+                   (schell:let-vars expr) 
+                   (schell:let-expr expr))
+                 (schell:let-vals expr)) env))
+
     ((schell:lambda? expr) (schell:make-function
                              env
                              (schell:lambda-args expr)
                              (schell:lambda-expr expr)))
+
+    ((schell:let*? expr) (eval (schell:let*-expand expr) env))
 
     ((schell:function? expr) expr)
 
