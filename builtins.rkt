@@ -73,12 +73,13 @@
 (define echo
   (case-lambda
     (() (raise (make-exn:bad-parameters "echo" 1 0)))
-    ((env) (begin (printf "\n") 0))
-    (args
-      (let (args (cdr args))
-        (if (null? args) (echo env)
-          (begin (printf "~a " (car args))
-                 (echo env (cdr args))))))))
+    ((env . args)
+     (letrec
+       ((echo-list
+          (lambda (args)
+            (if (null? args) (begin (printf "\n") 0)
+              (begin (printf "~a " (car args)) (echo-list (cdr args)))))))
+       (echo-list args)))))
 
 (define builtin-commands
   (list
