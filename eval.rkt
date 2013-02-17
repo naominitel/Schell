@@ -55,10 +55,9 @@
 ; function-apply : function? list -> any
 ; arguments are ignored for now
 (define (function-apply func args)
-  (let ((result ($eval (schell:function-expr func)
-                      (mcons (bind-env (schell:function-args func) args)
-                             (schell:function-env func)))))
-    result))
+  ($eval (schell:function-expr func)
+         (mcons (bind-env (schell:function-args func) args)
+                (schell:function-env func))))
 
 ; run-command : command? list? -> number? list?
 ; executes an external or internal command and return its exit code
@@ -85,12 +84,11 @@
                     (append (list subprocess stdout stdin stderr command) args)
                     namespace)))))
               (subprocess-wait proc)
-              (number->string (subprocess-status proc)))
-          (begin
+              (subprocess-status proc))
           (eval (append
                   (list builtin env)
                   (map (lambda (arg) (list 'quote arg)) args))
-                namespace)))))))
+                namespace))))))
 
 ; eval : any list? -> any
 ; evaluates a Schell expression in the given environment
@@ -103,6 +101,7 @@
 
     ((schell:let? expr) ($eval (schell:let-expand expr) env))
     ((schell:let*? expr) ($eval (schell:let*-expand expr) env))
+    ((schell:letrec? expr) ($eval (schell:letrec-expand expr) env))
 
     ((schell:begin? expr)
      (let ((exprs (cdr expr)))
@@ -120,6 +119,11 @@
                              (schell:lambda-expr expr)))
 
     ((schell:function? expr) expr)
+
+    ((and (list? expr) (eq? 'if (car expr)))
+     (if (eq? ($eval (cadr expr) env) 0)
+       ($eval (caddr expr) env)
+       ($eval (cadddr expr) env)))
 
     ((schell:command? expr)
      (with-handlers ((exn:command-not-found?

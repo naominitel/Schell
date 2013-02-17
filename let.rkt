@@ -1,6 +1,6 @@
 #lang racket
 
-(provide let? let-expand let*? let*-expand)
+(provide let? let-expand let*? let*-expand letrec? letrec-expand)
 
 ; let? : any -> boolean?
 ; returns true if a the given expr is a let-expr
@@ -59,6 +59,6 @@
 ; (let ((x1 <undef>) ...) (set! x1 e1) ... e)
 (define (letrec-expand expr)
   (let* ((vars (let-bindings expr))
-         (new-vars (map (lambda (var) (cons (car var) '<undef>)) vars))
-         (sets (map (lambda (var) (list 'set! (car var) (cdr var))) vars)))
-    (list 'let new-vars sets (caddr expr))))
+         (new-vars (map (lambda (var) (list (car var) '<undef>)) vars))
+         (sets (map (lambda (var) (cons 'set! var)) vars)))
+    (list 'let new-vars (cons 'begin (append sets (cddr expr))))))
