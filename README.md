@@ -86,7 +86,7 @@ Runs in the same time `cmd1` and `cmd2`, and connects the standard output of `cm
 
 Almost every value is text, as it is the most common and practical way of manipulating values that must be transferred between programs.
 
-A value of `0` (zero) is considered as false. Every other value is considered true. The special variables `$#t` and `$#f` respectively return a true and a false value. __(Not implemented)__
+A value of `"0"` (zero) is considered as true. Every other value is considered false. The special variables `$#t` and `$#f` respectively return a true and a false value. __(Not implemented)__
 
 Traditional Lisp lists and pairs are also supported. Lists can be constructed using the `'()` syntax, or the `cons` constructor. __(Not implemented).__ 
 
@@ -105,7 +105,7 @@ An empty value is equivalent to `""`.
 
 As in regular Scheme, placing a quote (`'`) in front of an expression will cause it to be treated as such without being evaluated. This means that `'(wrong)` will not cause the `wrong` command to be run, but instead return a list containing `'wrong`. In the same way, `'$PATH` does not returns the value of the variable, but the text `$PATH`.
 
-#### Conditions (Not implemented yet. Yes, I know, many things are not implemented yet...)
+#### Conditionals
 
 Conditions are exprimed the same as in tradititonal Scheme :
 
@@ -113,7 +113,9 @@ Conditions are exprimed the same as in tradititonal Scheme :
 (if (expr) expr_true expr_false)
 ```
 
-If the `expr` is evaluated to `$#t`, then the expression returns `expr_true`, otherwise it returns `expr_false`. 
+If the `expr` is evaluated to true, then the expression returns `expr_true`, otherwise it returns `expr_false`. 
+
+Any expression is considered as false, except the string `"0"`, which is true. This may looks weird but keep in mind that conditionals in shell often consists in checking command exit codes, and `"0"` is by convention the output of a command that ran properly.
 
 Standard Scheme booleans such as `eq?`, `<`, `>`, etc. are all supported.
 The standard shell booleans are also provided :

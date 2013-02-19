@@ -8,6 +8,7 @@
 (require (prefix-in schell: "functions.rkt"))
 (require (prefix-in schell: "let.rkt"))
 (require (prefix-in schell: "begin.rkt"))
+(require (prefix-in schell: "conditionals.rkt"))
 (provide $eval)
 
 (define-struct exn:command-not-found (command))
@@ -90,7 +91,7 @@
                   (map (lambda (arg) (list 'quote arg)) args))
                 namespace))))))
 
-; eval : any list? -> any
+; eval : any list? -> (or/c string? function? list?)
 ; evaluates a Schell expression in the given environment
 ; returns a string containing the result of the expression and the modified
 ; environment
@@ -120,10 +121,13 @@
 
     ((schell:function? expr) expr)
 
-    ((and (list? expr) (eq? 'if (car expr)))
-     (if (eq? ($eval (cadr expr) env) 0)
+    ((schell:if-expr? expr)
+     (if (eq? ($eval (cadr expr) env) "0")
        ($eval (caddr expr) env)
        ($eval (cadddr expr) env)))
+
+    ((schell:or-expr? expr) ($eval (schell:or-expand expr) env))
+    ((schell:and-expr? expr) ($eval (schell:and-expand expr) env))
 
     ((schell:command? expr)
      (with-handlers ((exn:command-not-found?
@@ -136,6 +140,9 @@
     ((schell:variable? expr)
      (schell:variable-value
        (schell:variable-name expr) env schell:builtin-variables))
+
+    ((boolean? expr)
+     (if expr "1" "0")) 
 
     ((number? expr)
      (number->string expr))

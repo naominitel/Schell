@@ -45,30 +45,30 @@
 
 (define-struct exn:bad-parameters (command expected given))
 
-; set : string? any mpair? -> void?
+; set : string? any mpair? -> number?
 (define schell-set
   (case-lambda
-    ((env var value) (variable-set var value env))
+    ((env var value) (variable-set var value env) 0)
     (args (raise (make-exn:bad-parameters "set!" 2 (- (length args) 1))))))
 
-; cd : mpair? string? -> void?
+; cd : mpair? string? -> number?
 ; change directory to the given path
 (define cd
   (case-lambda
     ((env) (cd env (getenv "HOME")))
-    ((env path) (current-directory path))
+    ((env path) (current-directory path) 0)
     (args (raise (make-exn:bad-parameters "cd" 1 (- (length args) 1))))))
 
-; export : mpair? string? any -> void?
+; export : mpair? string? any -> numer?
 ; puts the given (variable, value) in the UNIX environnement variables. If
 ; no value is providen, use actual value of the variable in the local env stack
 (define export
   (case-lambda
-    ((env var value) (putenv var value))
+    ((env var value) (if (putenv var value) 0 1))
     ((env var) (export env var (schell:variable-value var env null)))
     (args (raise (make-exn:bad-parameters "export" 1 (- (length args) 1))))))
 
-; echo : env? list? -> void?
+; echo : env? list? -> number?
 ; prints all elements of the given list on the standard output
 (define echo
   (case-lambda
