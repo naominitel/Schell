@@ -130,12 +130,7 @@
     ((schell:and-expr? expr) ($eval (schell:and-expand expr) env))
 
     ((schell:command? expr)
-     (with-handlers ((exn:command-not-found?
-                       (lambda (e)
-                         (printf "schell: ~a: command not found\n"
-                                 (exn:command-not-found-command e))
-                         1)))
-        (run-command expr env)))
+        (run-command expr env))
 
     ((schell:variable? expr)
      (schell:variable-value
