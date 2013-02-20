@@ -1,10 +1,10 @@
 #lang racket
 
-(provide let? let-expand let*? let*-expand letrec? letrec-expand)
+(provide let-expr? let-expand let*-expr? let*-expand letrec-expr? letrec-expand)
 
 ; let? : any -> boolean?
 ; returns true if a the given expr is a let-expr
-(define (let? expr)
+(define (let-expr? expr)
   (and (list? expr) (eq? 'let (car expr))))
 
 ; let-expr : let? -> any
@@ -37,7 +37,7 @@
 
 ; let*? : any -> boolean?
 ; returns true if the given expr is a let* expr
-(define (let*? expr)
+(define (let*-expr? expr)
   (and (list? expr) (eq? 'let* (car expr))))
 
 ; let*-expand : let*? -> let?
@@ -51,7 +51,7 @@
 
 ; letrec? : any -> boolean?
 ; returns true if the given expr is a letrec expr
-(define (letrec? expr)
+(define (letrec-expr? expr)
   (and (list? expr) (eq? 'letrec (car expr))))
 
 ; letrec-expand : letrec? -> let?

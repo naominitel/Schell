@@ -6,9 +6,9 @@
 (require (prefix-in schell: "command.rkt"))
 (require (prefix-in schell: "builtins.rkt"))
 (require (prefix-in schell: "functions.rkt"))
-(require (prefix-in schell: "let.rkt"))
 (require (prefix-in schell: "begin.rkt"))
 (require (prefix-in schell: "conditionals.rkt"))
+(require (prefix-in schell: "expander.rkt"))
 (provide $eval)
 
 (define-struct exn:command-not-found (command))
@@ -70,6 +70,7 @@
   (let ((command ($eval (schell:command cmd) env))
         (args (eval-args (schell:arguments cmd) env))
         (namespace (namespace-anchor->namespace anchor)))
+    (printf "Command: ~a\n" command)
     (if (schell:function? command)
       (function-apply command args)
       (let ((builtin (schell:envsearch schell:builtin-commands command)))
@@ -97,52 +98,45 @@
 ; environment
 (define ($eval expr env)
   (printf "eval ~a in ~a\n" expr env)
-  (cond
-    ((schell:quote? expr) (cadr expr))
+  (let ((expr (schell:expand expr)))
+    (cond
+      ((schell:quote? expr) (cadr expr))
 
-    ((schell:let? expr) ($eval (schell:let-expand expr) env))
-    ((schell:let*? expr) ($eval (schell:let*-expand expr) env))
-    ((schell:letrec? expr) ($eval (schell:letrec-expand expr) env))
+      ((schell:begin? expr)
+       (let ((exprs (cdr expr)))
+         (cond
+           ((null? exprs) (void))
+           ((null? (cdr exprs)) ($eval (car exprs) env))
+           (else
+             (begin
+               ($eval (car exprs) env)
+               ($eval (cons 'begin (cdr exprs)) env))))))
 
-    ((schell:begin? expr)
-     (let ((exprs (cdr expr)))
-       (cond
-         ((null? exprs) (void))
-         ((null? (cdr exprs)) ($eval (car exprs) env))
-         (else
-           (begin
-             ($eval (car exprs) env)
-             ($eval (cons 'begin (cdr exprs)) env))))))
+      ((schell:lambda? expr)
+       (schell:make-function
+         env (schell:lambda-args expr)
+         (schell:lambda-expr expr)))
 
-    ((schell:lambda? expr) (schell:make-function
-                             env
-                             (schell:lambda-args expr)
-                             (schell:lambda-expr expr)))
+      ((schell:if-expr? expr)
+       (if (eq? ($eval (cadr expr) env) "0")
+         ($eval (caddr expr) env)
+         ($eval (cadddr expr) env)))
 
-    ((schell:function? expr) expr)
+      ((schell:command? expr)
+       (run-command expr env))
 
-    ((schell:if-expr? expr)
-     (if (eq? ($eval (cadr expr) env) "0")
-       ($eval (caddr expr) env)
-       ($eval (cadddr expr) env)))
+      ((schell:variable? expr)
+       (schell:variable-value
+         (schell:variable-name expr)
+         env schell:builtin-variables))
 
-    ((schell:or-expr? expr) ($eval (schell:or-expand expr) env))
-    ((schell:and-expr? expr) ($eval (schell:and-expand expr) env))
+      ((boolean? expr)
+       (if expr "1" "0"))
 
-    ((schell:command? expr)
-        (run-command expr env))
+      ((number? expr)
+       (number->string expr))
 
-    ((schell:variable? expr)
-     (schell:variable-value
-       (schell:variable-name expr) env schell:builtin-variables))
+      ((schell:text? expr)
+       (symbol->string expr))
 
-    ((boolean? expr)
-     (if expr "1" "0")) 
-
-    ((number? expr)
-     (number->string expr))
-
-    ((schell:text? expr)
-     (symbol->string expr))
-
-    ((string? expr) expr)))
+      ((string? expr) expr))))
