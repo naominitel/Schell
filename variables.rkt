@@ -34,4 +34,4 @@
 ; returns true if the expression is a quoted expression, and should
 ; not be evaluated
 (define (quote? expr)
-  (and (list? expr) (eq? 'quote (car expr))))
+  (and (pair? expr) (eq? 'quote (car expr))))

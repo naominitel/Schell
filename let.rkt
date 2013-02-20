@@ -5,7 +5,7 @@
 ; let? : any -> boolean?
 ; returns true if a the given expr is a let-expr
 (define (let-expr? expr)
-  (and (list? expr) (eq? 'let (car expr))))
+  (and (pair? expr) (eq? 'let (car expr))))
 
 ; let-expr : let? -> any
 ; returns the expr of a let expression. e.g. (let (...) expr) -> expr
@@ -38,7 +38,7 @@
 ; let*? : any -> boolean?
 ; returns true if the given expr is a let* expr
 (define (let*-expr? expr)
-  (and (list? expr) (eq? 'let* (car expr))))
+  (and (pair? expr) (eq? 'let* (car expr))))
 
 ; let*-expand : let*? -> let?
 ; expand (let* ((x1 e1) ...) expr) into (let ((x1 e1)) (let (...) expr))
@@ -52,7 +52,7 @@
 ; letrec? : any -> boolean?
 ; returns true if the given expr is a letrec expr
 (define (letrec-expr? expr)
-  (and (list? expr) (eq? 'letrec (car expr))))
+  (and (pair? expr) (eq? 'letrec (car expr))))
 
 ; letrec-expand : letrec? -> let?
 ; expand (letrec ((x1 e1) ...) e) into 

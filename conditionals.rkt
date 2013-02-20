@@ -1,34 +1,39 @@
 #lang racket
 
-(provide if-expr? or-expr? or-expand and-expr? and-expand)
+(provide true false if-expr? or-expr? or-expand and-expr? and-expand)
+
+(define true "0")
+(define false "1")
 
 (define (if-expr? expr)
-  (and (list? expr) (eq? 'if (car expr))))
+  (and (pair? expr) (eq? 'if (car expr))))
 
 (define (or-expr? expr)
-  (and (list? expr) (eq? 'or (car expr))))
+  (and (pair? expr) (eq? 'or (car expr))))
 
 (define (or-expand expr)
   (letrec 
-    ((expand 
-       (lambda (exprs)
-         (if (null? exprs) '#f
-           (list 'if 
-                 (car exprs)
-                 (expand (cdr exprs)))))))
-    (expand (cdr expr))))
+    ((or-expand-args
+       (lambda (args)
+         (cond
+           ((null? args) false)
+           ((null? (cdr args)) (car args))
+           (else
+             (list 'let
+                   (list (list 'expr (car args)))
+                   (list 'if expr expr (or-expand-args (cdr args)))))))))
+    (or-expand-args (cdr expr))))
 
 (define (and-expr? expr)
-  (and (list? expr) (eq? 'and (car expr))))
+  (and (pair? expr) (eq? 'and (car expr))))
 
 (define (and-expand expr)
   (letrec
-    ((expand
-       (lambda (exprs)
-         (if (null? exprs) '#t
-           (list 'if
-                 (expand (cdr exprs))
-                 (car exprs))))))
-    (expand (cdr expr))))
-
-
+    ((and-expand-args
+       (lambda (args)
+         (cond
+           ((null? args) true)
+           ((null? (cdr args)) (car args))
+           (else
+             (list 'if (car args) (and-expand-args (cdr args)) false))))))
+    (and-expand-args (cdr expr))))

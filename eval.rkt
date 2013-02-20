@@ -92,15 +92,35 @@
                   (map (lambda (arg) (list 'quote arg)) args))
                 namespace))))))
 
-; eval : any list? -> (or/c string? function? list?)
+; eval : SchellExpr? -> (or/c string? function? list?)
 ; evaluates a Schell expression in the given environment
 ; returns a string containing the result of the expression and the modified
 ; environment
+;
+; <SchellExpr> ::= <atom>
+;               |  $ <variable>
+;               |  ( quote <SchellExpr>)
+;               |  ( if <SchellExpr> <SchellExpr> <ShellExpr> )
+;               |  ( set! <variable> <SchellExpr> )
+;               |  ( begin <SchellExpr>* )
+;               |  ( lambda ( <variable>* ) <SchellExpr> )
+;               |  ( <SchellExpr>+ )
+;
 (define ($eval expr env)
   (printf "eval ~a in ~a\n" expr env)
   (let ((expr (schell:expand expr)))
     (cond
       ((schell:quote? expr) (cadr expr))
+
+       ((schell:variable? expr)
+       (schell:variable-value
+         (schell:variable-name expr)
+         env schell:builtin-variables))
+
+     ((schell:if-expr? expr)
+       (if (string=? ($eval (cadr expr) env) schell:true)
+         ($eval (caddr expr) env)
+         ($eval (cadddr expr) env)))
 
       ((schell:begin? expr)
        (let ((exprs (cdr expr)))
@@ -117,21 +137,11 @@
          env (schell:lambda-args expr)
          (schell:lambda-expr expr)))
 
-      ((schell:if-expr? expr)
-       (if (eq? ($eval (cadr expr) env) "0")
-         ($eval (caddr expr) env)
-         ($eval (cadddr expr) env)))
-
       ((schell:command? expr)
        (run-command expr env))
 
-      ((schell:variable? expr)
-       (schell:variable-value
-         (schell:variable-name expr)
-         env schell:builtin-variables))
-
       ((boolean? expr)
-       (if expr "1" "0"))
+       (if expr schell:true schell:false))
 
       ((number? expr)
        (number->string expr))
